@@ -1,0 +1,202 @@
+---
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+\textbf{Question 2:}
+```{r}
+#Loading Data
+q2data <- data.matrix(read.csv(file = "Q2_Data.csv"))
+q2frame <- read.csv(file="Q2_Data.csv")
+y <- matrix(q2data[,1],7,1)
+y
+x <- matrix(c(rep(1,7),q2data[,-1]),7,4)
+x
+df <- 7-4
+```
+
+\textbf{a:} Fit a linear model to the data and estimate the parameters and variance.
+
+```{r}
+#Finding Beta using BLUE
+b <- solve(t(x)%*%x,t(x)%*%y)
+b
+
+#Finding variance
+#sum-Square
+e <- (y-x%*%b)
+SSres <- sum(e^2)
+s2 <- SSres/(df)
+s <- sqrt(s2)
+
+#Beta Variance
+C2x <- solve(t(x)%*%x)*s2
+diag(C2x)
+
+#Beta standard Error
+sqrt(diag(C2x))
+```
+
+Thus the model is given by
+\begin{tabular}{l l l l l}
+$y=$&$54.776606226$&$-0.389598784X_1$&$-0.001973937X_2$ &$-0.242767764X_3$\\
+ &$(4.4325965)$ &$(0.1838062)$&$(0.0027075)$&$(0.4324485)$ \\
+\end{tabular}
+
+\vspace{0.2cm}
+\noindent \textbf{b. }Find a 90\% confidence interval for the expected price per square metre of a 10 year old apartment that is 100 meters away from the train station and has 6 convenience stores nearby.
+
+```{r}
+#Part B Computing CI
+
+alpha <- 0.1
+x.star <- c(1,10,100,6)
+y.star <- x.star%*%b
+ta <- qt(1-alpha/2, df)
+
+#Computing 90CI for x1=10, x2= 100 ,x3 =6
+CI = c(y.star - s*sqrt(t(x.star)%*%solve(t(x)%*%x)%*%x.star),
+       y.star + s*sqrt(t(x.star)%*%solve(t(x)%*%x)%*%x.star))
+CI
+```
+
+The 90% confidence invterval of 10 years old appeartment that is 100 meters away from train station and has 6 convenience stores nearby is $(46.59336,51.85988)$. \
+
+\vspace{0.2cm}
+
+\noindent \textbf{c. } Find the standard error of $\beta_1-\beta_3$
+
+```{r}
+#General Linear Hypothesis for B1-B3
+#Setting C and delta star
+C <- c(0,1,0,-1)
+cdelta.star <- matrix(0)
+
+#Computing the variance and standard error for B1-B3
+Cb.var <- t(C)%*%solve(t(x)%*%x)%*%C*s2
+Cb.var
+Cb.ste <- sqrt(Cb.var)
+Cb.ste
+```
+The standard error of $\beta_1-\beta_3$ is 0.5625504.
+
+\vspace{0.2cm}
+\noindent \textbf{d. }Test the hypothesis that the price per square metre falls by \$1000 for every year that the
+apartment ages, at the 5\% significance level.
+
+Testing $H_0=\beta_1=-1$ vs $H_1=\beta_1 \neq -1$
+
+```{r}
+#General Linear Hypothesis
+#General Linear Hypothesis
+C <- matrix(c(0,1,0,0),1,4)
+dst <- matrix(-1)
+
+#Conducting an F-test for y=-1 given B1=1
+num <- (t(C%*%b-dst)*solve((C%*%solve(t(x)%*%x)%*%t(C)))%*%(C%*%b-dst))
+Fstat <- num/(SSres/df)
+pf(Fstat,1,3, lower.tail = FALSE)
+```
+
+\noindent Since the P-value is 0.04502395, which is less than 0.05, which should reject the null that the price will fall by \$1000 for each year the apartment age at 5\% statistical significant.2
+
+\vspace{0.2cm}
+\noindent \textbf{e.} Test for model relevance using a corrected sum of squares.
+
+
+Testing for $H_0=\beta_1=\beta_2=\beta_3=0$ vs $H_1= \beta_1$ or $\beta_2$ or $\beta_3$ is non-zero using corrected sum of squares.
+
+```{r}
+#Computing model 2
+x2 <- x[,-1]
+b2 <- solve(t(x2)%*%x2,t(x2)%*%y)
+
+#Breaking Rg1g2 and Rg2 for correct sum squared
+SSres2 <- sum((y-x2%*%b2)^2)
+Rg2 <- t(y)%*%x2%*%b2
+SSreg <- t(y)%*%y
+Rg1g2 <- SSreg - Rg2
+Rg1g2
+
+#F Test
+r <- 1
+Fstat <- (Rg1g2/r)/(SSres/(df))
+Fstat
+pf(Fstat,r,df, lower.tail=FALSE)
+```
+
+
+\noindent Since the p-value for the test is $0.001109267 < 0.05$, we can say the model is statically significant using the corrected sum of squared method. Hence, we should reject the null
+
+
+\pagebreak
+\textbf{Question 4:}
+
+```{r}
+#Loading and Scaling Data
+data(mtcars)
+mtcars.new = log(mtcars[, c(1,3:7)])
+```
+
+\textbf{a.} Plot the data and Comment
+
+```{r}
+#Plotting Pair Graph
+pairs(mtcars.new)
+```
+
+Form the pairs plots we can see there is a negative linear relationship between \textbf{mpg} and \textbf{disp}; \textbf{mpg} and \textbf{hp}; \textbf{mpg} and \textbf{wt} with all of thems having a small additive error
+
+Between \textbf{mpg} and \textbf{drat} there is a positive linear relationship; however there seem to be a big error additive error. Similarly, the positive linear relationship also exist between \textbf{mpg} and \textbf{qsec} but with a multiplicative error instead of an additive one like the other explanatory variables.
+
+For \textbf{disp} it is positively correlated with \textbf{hp} and \textbf{wt} but is negatively correlated with \text{wt}. There is a linear relationship between weight and gross horse power.
+\vspace{0.2cm}
+
+\textbf{b. } Preform using forward Selection
+```{r}
+#Preforming forward selection of mtcars model
+basemodel <- lm(mpg~1, data=mtcars.new)
+add1(basemodel, scope = ~.+disp+hp+drat+wt+qsec, test="F")
+q4model2 <- lm(mpg ~ disp, data=mtcars.new)
+add1(q4model2, scope = ~.+hp+drat+wt+qsec, test="F") 
+q4model3 <- lm(mpg~disp+wt, data=mtcars.new)
+add1(q4model3, scope = ~.+hp+drat+qsec, test="F") 
+q4model4 <- lm(mpg~disp+hp+wt, data=mtcars.new)
+add1(q4model4, scope = ~.+drat+qsec, test="F") 
+summary(q4model4)
+```
+
+Model 4 is the optimal model using forward selection as \textbf{drat} and \textbf{qsec} no longer have any significant after adding \textbf{disp}, \textbf{hp} and \textbf{wt}.
+
+\vspace{0.5cm}
+
+\textbf{c.} Starting from the full model, perform model selection using stepwise selection with AIC}
+```{r}
+AICbasemodel <- lm(mpg ~ disp+hp+drat+wt+qsec ,data=mtcars)
+q4modelAIC <- step(AICbasemodel, scope = ~., steps=4)
+```
+\vspace{0.3cm}
+
+The best model for AIC was achieved after 4 steps; doing nothing allow us to have the lowest possible value for $AIC=-141.16$
+
+\vspace{0.2cm}
+\textbf{d.} Write down the final fitted model from stepwise selection.
+
+```{r}
+summary(q4modelAIC)
+```
+
+The model final fitted model from stepwise using AIC as a goodness of fit is given by:
+\begin{tabular}{l l l l}
+$mpg=$&$4.83469$&$-0.25532hp$&$-0.56228wt$ \\
+ &$(0.22440)$ &$(0.05840)$&$(0.08742)$ \\
+\end{tabular}
+
+
+
+
+
+

@@ -1,0 +1,203 @@
+\documentclass[12 pt, a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[left=2.5 cm,top=2.54 cm,right=2.5 cm,bottom=2.54 cm]{geometry}
+\usepackage[flushleft]{threeparttable}
+\usepackage{mathtools}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\title{Linear Statistical Models Assignment 3}
+\date{}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{graphicx,wrapfig}
+\author{Kim Seang CHY}
+\usepackage{xcolor}
+\usepackage{lipsum}
+\usepackage{mwe}
+
+%Table Adjustment
+\usepackage{tabularx}
+\newcommand{\tabitem}{~~\llap{\textbullet}~~}
+\newcommand{\A}{\textbf{A}}
+\newcommand{\M}{\textbf{M}}
+\newcommand{\B}{\boldsymbol\beta}
+\newcommand{\z}{\textbf{z}}
+
+
+
+\begin{document}
+
+\maketitle
+
+
+\noindent \textbf{Question 1:}	Let $A$ be an $n \times p$ matrix with $n \geq p$.\\
+
+\noindent \textbf{a.} Show directly that $r(A^c A) = r(A)$.\\
+
+\noindent Let $\A=
+\left[
+\begin{array}{c|c}
+\M & A_{12}\\
+\hline
+A_{21}& A_{22}\\
+\end{array}
+\right] $  where \M \space is a square matrix with $r(\A) \times r(\A)$ and $r(\A)=a\leq p$. By definition \M \space is a matrix with $r(\M)=r(\A)$\\
+
+\noindent Using theorem 6.2, we can find $\A^c$ such that it has the following partition:
+
+\noindent $\A^c=
+\left[
+\begin{array}{c|c}
+\M^{-1} & 0\\
+\hline
+0 & 0\\
+\end{array}
+\right] $ where $\M^{-1}$ is the inverse of \M.\\
+
+\vspace{0.5cm}
+\noindent Hence $\A^c\A=
+\left[
+\begin{array}{c|c}
+I_a & \M^{-1}A_{12} \\
+\hline
+0 & 0\\
+\end{array}
+\right] $ \\
+
+		
+
+\noindent All column vectors in $\M^{-1}A_{1,2}$ is a linear combination of the independent column vectors  in the identity matrix $I_a$.    Thus $r(\A^c\A)=r(I_a)=r(\M)=a$. Since $r(\A)=r(\M)$, this implied $r(\A)= r(\A^c\A)$.\\
+
+
+
+
+\noindent \textbf{b.} Show directly that $A^c A$ is idempotent.\\
+
+\noindent Since $A^c$ is a conditional inverse for A then $AA^cA$=A. Thus,
+\begin{align*}
+\left(A^cA\right)^2&=A^cA A^cA \\
+&= A^cA
+\end{align*}		
+ \noindent Hence, $A^cA$ is idempotent\\
+		
+		
+\noindent \textbf{c.} Show directly that $A(A^TA)^c A^T$ is unique (invariant to the choice of conditional inverse). \\
+
+	
+
+\noindent Consider conditional inverse $(A^TA)^c_1$ and an arbitrary conditional inverse $(A^TA)^c_i$ where $i\neq 1$. Now using the properties $A=A(A^TA)^c_i(A^TA$) and $A^T= (A^TA)^c_1(A^TA)A^T.$, we get the following:
+\begin{align*}
+A(A^TA)^c_1A^T&= A(A^TA)^c_i(A^TA)(A^TA)^c_1A^T\\
+&=A(A^TA)^c_iA^T
+\end{align*}
+
+\noindent Since,$ A(A^TA)^c_1A^T=A(A^TA)^c_iA^T$, this implied it is unique and invariant to the choice of conditional inverse.
+
+
+\pagebreak
+
+\noindent \textbf{Question 3:}\\
+\vspace{0.5cm}
+
+Let $ t= \left[
+\begin{array}{c}
+t_1 \\
+\hline
+t_2
+\end{array}
+\right]=
+\left[
+\begin{array}{c}
+X_1^TX_1z_1 \\
+\hline
+X_2^TX_2z_2
+\end{array}
+\right] $ and $X= \left[
+\begin{array}{c|c}
+X_1 & X_2
+\end{array}
+\right]$ \
+
+\vspace{0.5cm}
+$X^TX\textbf{a}=
+ \left[
+\begin{array}{c}
+X_1^T\\
+\hline
+X_2^T
+\end{array}
+\right]
+ \left[
+\begin{array}{c|c}
+X_1 & X_2
+\end{array}
+\right]
+\textbf{a}=
+ \left[
+\begin{array}{c|c}
+X_1^TX_1 & X_1^TX_2\\
+\hline
+X_2^TX_1 &X_2^TX_2
+\end{array}
+\right]\textbf{a}
+$\\
+
+\vspace{0.5cm}
+\noindent We can to rewrite the system of linear equation for  $X^TX\textbf{a}=t$,  as an augmented matrix form as $[X^TX|t]$.\\
+
+
+$[X^TX|t]= \left[
+\begin{array}{c c |c}
+X_1^TX_1 & X_1^TX_2 &X_1^TX_1z_1 \\
+X_2^TX_1 &X_2^TX_2 &X_2^TX_2z_2 \\ 
+\end{array}
+\right]=
+\left[
+\begin{array}{c c}
+X_1^T & 0\\
+0 &X_2^T\\ 
+\end{array}
+\right]
+ \left[
+\begin{array}{c c |c}
+X_1& X_2&X_1z_1\\
+X_1 &X_2&X_2z_2 \\ 
+\end{array}
+\right]$\\
+
+\noindent Since, $X_2$ is continuous factor we can inferred that $X_2$ is column full rank and since $X_1$ less then full column rank we can inferred that $X_1$ can be written as a linear combination $X_2$. \\
+
+\noindent Thus by theorem 6.2 that 
+$r\left(\left[
+\begin{array}{c c |c}
+X_1& X_2&X_1z_1\\
+X_1 &X_2&X_2z_2 \\ 
+\end{array}
+\right]\right)=r(X^TX)$ if and only if
+$\left[
+\begin{array}{c c |c}
+X_1& X_2&X_1z_1\\
+X_1 &X_2&X_2z_2 \\ 
+\end{array}
+\right]$ is a consistent system.\\
+
+\noindent Thus by the fact that $X_2$ is a linear combination of $X_1$and then $\left[
+\begin{array}{c c}
+X_1^TX_1 & X_1^TX_2\\
+X_2^TX_1 &X_2^TX_2\\ 
+\end{array}
+\right]$ are linear combination of $\left[
+\begin{array}{c}
+t_1 \\
+\hline
+t_2
+\end{array}
+\right] $ if there exist a $z_1$ such that $X_1^TX_1z_1=t_1$ is a consistent system. \\
+
+\noindent Since, $t_1^T\beta_1$ is estimable then $X_1^TX_1z_1=t_1$ is a consistent system hence $X^TXz=t$ is also a consistent system. Thus, if $t_1^T\beta_1$ is estimable then $t^T\beta$ where $\beta^T=[\beta_1^T|\beta_2^T]$. 
+ 
+
+
+
+
+
+\end{document}
