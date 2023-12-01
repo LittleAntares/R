@@ -1,0 +1,163 @@
+---
+title: "MAST30025 Assingment 3"
+author: "Kim Seang CHY"
+date: "998008"
+output: pdf_document
+---
+
+
+\noindent Question 1:
+
+#Prequestion
+```{r}
+X = scan(file="assignment3_prob1.txt", what=double())
+length(X)
+mean(X)
+```
+
+\noindent a. Derive the posterior distribution of $\tau$.
+
+Since $x_i|\tau\sim \text{N}(75,\frac{1}{\tau})$ and $\tau \sim\text{Gamma}(2,1)$ Let $X=(x_1,\ldots,x_{100})$.
+
+The likelihood of $X|\tau$ is given by:
+\begin{align*}
+f(X|\tau)&=\prod_{i=1}^{100}f(x_i|\tau) \\
+&\propto (\tau)^{50} \text{exp} \left[\frac{-\tau}{2}\sum_{i=1}^{100}\left(x_i-75 \right)^2 \right]
+\end{align*}
+
+Thus $P(\tau|X)$ is given by:
+\begin{align*}
+P(\tau|X)&\propto f(X|\tau)P(\tau)\\
+&\propto (\tau)^{50}\text{exp} \left[\frac{-\tau}{2}\sum_{i=1}^{100}\left(x_i-75 \right)^2 \right] (\tau)\text{exp}(-\tau)\\
+&\propto (\tau)^{52-1}\text{exp} \left[-\tau(1+\frac{1}{2}\sum_{i=1}^{100}(x_i-75)^2)\right]
+\end{align*}
+
+By inspection we can see $\tau|X$ is gamma distribution with $\alpha=52$ and $\beta=1+\frac{1}{2}\sum_{i=1}^{100}(x_i-75)^2$ or $\tau|X \sim \text{Gamma}(52,1+\frac{1}{2}\sum_{i=1}^{100}(x_i-75)^2)$.
+
+
+```{r}
+#Calculating therotical beta value
+beta = 0.5*sum((X-75)^2)+1
+beta
+alpha = 2+0.5*length(X)
+alpha
+```
+Thus $\tau|X \sim \text{Gamma}(52,1805.65)$.
+
+
+\noindent b. Derive the posterior predictive distribution for new score $\tilde x$, $P(\tilde x|x_1,\ldots,x_{100})$.
+
+From q1 part a we know $\tau|X \sim \text{Gamma}(52,1805.65)=\text{Gamma}(\alpha,\beta)$ and $\tilde x|\tau \sim \text{N}(75,\frac{1}{\tau})$, where $X=(x_1,\ldots,x_{100})$.
+
+\begin{align*}
+P(\tilde x|x_1,\ldots,x_{100})&=\int_{0}^{\infty}P(\tilde x|\tau)P(\tau|X) \text{ d}\tau \\
+&= \int_{0}^{\infty} \sqrt{\frac{\tau}{2\pi}}\text{exp}\left[\frac{-\tau}{2}(\tilde x - 75)^2 \right] \frac{\beta^{\alpha}}{\Gamma(\alpha)}\tau^{\alpha-1}\text{exp}(-\beta \tau) \text{ d}\tau \\
+&= \frac{\beta^{\alpha}}{\Gamma(\alpha)\sqrt{2\pi}}\int_{0}^{\infty}\text{exp}\left[-\tau\left(\frac{(\tilde x - 75)^2}{2}+\beta \right)\right] \tau^{\frac{2\alpha+1}{2}-1} \text{ d}\tau \\
+&= \frac{\beta^{\alpha}}{\Gamma(\alpha)\sqrt{2\pi}} \frac{\Gamma(\frac{2\alpha+1}{2})}{\left[\frac{\left(\tilde x-75 \right)^2}{2} +\beta \right]^{\frac{2\alpha+1}{2}}}
+\end{align*}
+
+Using Gamma distribution normalising constant to solve integration.
+
+\begin{align*}
+P(\tilde x|x_1,\ldots,x_{100})&=\frac{\Gamma(\frac{2\alpha+1}{2})}{\Gamma(\frac{\alpha}{2})\sqrt{2\pi \beta}}\left[\frac{(\tilde x - 75)^2}{2\beta}+1\right]^{-\frac{-2\alpha+1}{2}} \\
+&= \frac{\Gamma(\frac{2\alpha+1}{2})}{\Gamma(\frac{2\alpha}{2})\sqrt{2\alpha \pi \frac{\beta}{\alpha}}}\left[\frac{1}{2\alpha}\frac{(\tilde x - 75)^2}{\frac{\beta}{\alpha}}+1\right]^{-\frac{-2\alpha+1}{2}}
+\end{align*}
+
+
+```{r}
+v=alpha*2
+v
+a=75
+a
+b=beta/alpha
+b
+```
+
+By inspection we can see the predictive distribution for new $\tilde x|(x_1,\ldots,x_{100})\sim \text{t}(104,75,34.72)$, which is a student-t distribution with three parameter of 104, 75, 34.72.
+
+\pagebreak
+
+\noindent Question 2: 
+
+
+Using the information given we will simulate gamma distribution with parameter $\alpha\geq1$ and $\beta$, as stated below
+
+Let
+\begin{align*}
+f(x)=\frac{h(x)^{\alpha-1}e^{-h(x)}h'(x)}{\Gamma(\alpha)} \\
+d=\alpha-1/3, \\
+c=\frac{1}{\sqrt{9d}},\\
+h(x)=d(1+cx)^3\\
+g(x) = d \log((1+c*x)^3)-d*(1+c*x)^3+d
+\end{align*}
+
+
+Using $f(x)*\Gamma(\alpha) \propto \text{exp}(g(x))$, we can simulate $f(x)$ by simulating $\text{exp}(g(x))$ using the general rejection method with $p(x)=e^{\frac{-x^2}{2}}$ as an envelope with $X\sim N(0,1)$ with either $X \geq \frac{-1}{c}$ or $h(x) \geq0$.\
+
+
+The algorithm used follow the step below:
+\begin{enumerate}
+  \item Simulate X from $N(0,1)$.
+  \item If $X \geq \frac{-1}{c}$ return X else start from step 1
+  \item Generate $Y\sim U(0,p(X))$
+  \item If $Y < \text{exp(g(X))}$ return$\frac{\text{exp}(g(X))}{\beta}$ else return to step 1
+  \item Repeat until we get the number of n sample required
+\end{enumerate}
+\
+
+```{r}
+#Simulating Gamma Sample with alpha = a, beta = b, number of required sample = n
+sim.gamma <- function(a,b,n){
+  gamma.sample = c()
+  for (i in 1:n){
+    gamma.sample[i] = X.Gamma(a)/b
+  }
+  return(gamma.sample)
+}
+
+
+#Function to Stimulate X and apply general rejection method to g(x) with p(x) as
+#an envelope function. Step 1, 2, 3 and Part of 4
+X.Gamma <- function(a){
+  d=a-1/3
+  c=1/sqrt(9*d)
+  x.sample=c()
+  h <- function(x) d*(1+c*x)^3
+  while(TRUE){
+    while(TRUE){
+      x.point = rnorm(1)
+      if (x.point >= -1/c) break
+    }
+    Y <- runif(1,0,p(x.point))
+    if (Y<exp.g(x.point,a)) return(h(x.point)) 
+  }
+}
+
+#Let p(x)=exp(-x^2/2)
+p <-function(x){
+  x=exp(-x^2/2)
+  return(x)
+}
+
+
+#Define exp(g(x))
+exp.g <- function(x,a){
+  d=a-1/3
+  c=1/sqrt(9*d)
+  q <- function(x) (1+c*x)^3
+  g <- function(x) d*log(q(x))-d*q(x)+d
+  x= exp(g(x))
+  return(x)
+}
+
+#Running the simulation and Plotting qq-plot
+g <- sim.gamma(1.2,3,1000)
+plot(qgamma(1:1000/1001, 1.2, 3), sort(g))
+abline(0, 1, col="red")
+
+```
+\
+Looking at the qq-plot we can see that our simulation are close to the pseudo-random of Gamma(1.2,3) for 1000 samples.
+
+
+

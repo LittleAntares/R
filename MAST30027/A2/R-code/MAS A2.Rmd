@@ -1,0 +1,566 @@
+---
+title: "MAST30025 Assingment 2"
+author: "Kim Seang CHY"
+date: "998008"
+output: pdf_document
+---
+
+
+\noindent Question 1:
+
+```{r}
+q1.data <- read.table(file ="assignment2_prob1_2021.txt", header=TRUE)
+names(data)
+q1.data$prebake <- factor(q1.data$prebake)
+q1.data$flux <- factor(q1.data$flux)
+q1.data$cooling <- factor(q1.data$cooling)
+q1.data$temp <- factor(q1.data$temp)
+
+#Plotting Interaction plot
+par(mfrow=c(1,2)) 
+with(data=q1.data, interaction.plot(prebake, flux, numDefects)) 
+with(data=q1.data, interaction.plot(prebake, cooling, numDefects))
+with(data=q1.data, interaction.plot(prebake, temp, numDefects))
+with(data=q1.data, interaction.plot(flux, cooling, numDefects))
+with(data=q1.data, interaction.plot(flux, temp, numDefects))
+with(data=q1.data, interaction.plot(cooling, temp, numDefects))
+```
+
+I plot the interaction plot to see all the possible interaction.Looking at all combination of interactions beside the two above the rest the line of the interaction plot are very close to parallel thus indincating there are no interaction. While, prebake and cooling has a clear indication of interaaction, cooling and temp does not and will require further invetigation
+
+here seem to also be interaction between Prebake condition and cooling time. Thus suggesting the additive model is inadequate 
+
+Looking at fundamental of data set, we are testing various factors on number of defects thus it is more an independence bernulli variable with different probability of defects, thus we will model it using a poisson.
+
+```{r}
+Amodel <- glm(numDefects~., family = "poisson", data = q1.data)
+summary(Amodel)
+```
+The inadequacy of the additive was further supported here as the model has deviance of 980.49 relative the 43 degree of freedoms.
+
+```{r}
+#Fullmodel
+Fullmodel <- glm(numDefects~ (prebake+flux+cooling+temp)^2, family = "poisson", data=q1.data)
+summary(Fullmodel)
+
+#Reduced
+model1 <- glm(numDefects~prebake*flux+prebake*cooling
+              +prebake*temp+flux*temp+cooling*temp, 
+              family = "poisson", data=q1.data)
+summary(model1)
+anova(model1,Fullmodel, test="LRT")
+```
+The model only need the interaction between prebake and flux, prebake and cooling time, prebake and temp, flux and temp and cooling time and temp as remove anymore variable from model would make Full model become significant under LRT test.
+.
+
+```{r}
+phihat <- sum(residuals(model1,type="pearson")^2)/(38)
+phihat
+```
+
+Since $\hat{\phi}$=19.65 and is significant greater than 1, hence we can conclude that hour model has a dispersion problem. Thus we will now model our model using quasipoisson.
+
+```{r}
+Fullmodel <- glm(numDefects~ (prebake+flux+cooling+temp)^2, family = "quasipoisson", data=q1.data)
+summary(Fullmodel)
+
+model1 <- glm(numDefects~prebake+flux+cooling*temp, 
+              family = "quasipoisson", data=q1.data)
+summary(model1)
+anova(model1,Fullmodel, test="LRT")
+```
+After taking into consideration for over dispersion and removing one variable at a time from the Fullmodel then do LRT test we get the final model that has significantly less and differences if we were not to take dispersion into consideration as the new model contain prebake, flux that was not in the orginal relevant model.
+
+
+
+```{r}
+library(faraway)
+par(mfrow=c(1,2)) 
+halfnorm(influence(model1)$hat)
+halfnorm(rstudent(model1)) 
+halfnorm(cooks.distance(model1))
+```
+
+
+
+Looking at the leverage, we can see that 28 and 24 has moderately high leverage indicating that it is a points that has moderately potential impact on our data. However, Jackknife's residual and Cook's distance indicate that 25 particularly 27 are a points of outlier and highly influential. Thus, it is worth considering running the data again following the same procedure.
+Beside that our model is fine. 
+
+
+\pagebreak
+\textbf{Question 2:} 
+```{r}
+#Pre-question
+X = scan(file="assignment2_prob2_2021.txt",what=double())
+length(X)
+hist(X)
+str(X)
+```
+
+\pagebreak
+\noindent \textbf{a.} Derive the expectation of the complete log-likelihood
+
+Let $n=300$, $\theta=(\pi_1,\pi_2,\lambda_1,\lambda_2,\lambda_3)$, $I(Z_i=k_i)$ be the indicator function
+\begin{align*}
+P(X,Z|\theta)&=P(X_1,\ldots, X_n,Z_1,\ldots, Z_n|\theta)\\
+&= \prod_{i = 1}^{n}P(X_i|Z_i,\theta)P(Z_i|\theta)\\
+&=\prod_{i=1}^{n} \prod_{k=1}^{3} \left[P(X_i|Z_i=k,\theta) P(Z_i=k|\theta) \right]^{I(Z_i=k)}
+\end{align*}
+
+
+\begin{align*}
+\log(P(X_1,\ldots, X_n,Z_1,\ldots, Z_n|\theta))=\sum_{i=1}^{n}\sum_{k=1}^{3}\left[I(Z_i=k)(\log(P(X_i|Z_i=k,\theta))+\log(P(Z_i=k|\theta))) \right]
+\end{align*}
+
+
+Since $X_i|Z_i \sim \text{Poisson}(\lambda_i) \implies P(X_i=x_i|Z_i=k,\theta)=\frac{\lambda_{k}^{x_i} e^{-\lambda_{k}}}{x_i!} \implies \log(P(X_i=x_i|Z_i=k,\theta))=X_i\log(\lambda_k)-\lambda_k-\log(X_i!)$
+\begin{align*}
+Q(\theta,\theta^0)&=E_{Z|X,\theta^0}[P(X,Z|\theta)]\\
+&=\sum_{i=1}^{n}\sum^{3}_{k=1}P(Z_i=k|X_i,\theta^0)\left[\log(P(X_i|Z_i=k,\theta))+\log(P(Z_i=k|\theta))\right]\\
+&=\sum_{i=1}^{n}\sum^{3}_{k=1}P(Z_i=k|X_i,\theta^0)\left[X_i\log(\lambda_k)-\lambda_k-\log(X_i!)+\log(\pi_k)\right] \\
+\end{align*}
+
+where $\pi_3=1-\pi_1-\pi_2$
+
+
+\noindent (b). Derive E-Step of the EM algorithm
+
+Let the initial value $\theta^0=(\pi_{1}^{0},\pi_{2}^{0},\lambda_{1}^{0},\lambda_{2}^{0},\lambda_{3}^{0})$.
+
+\begin{align*}
+P(Z_i=j|X_i,\theta^0)&=\frac{P(Z_i=j,X_i=\theta^0)}{P(X_i|\theta^0)}\\
+&= \frac{P(X_i|Z_i=j,\theta^0)P(Z_i=j|\theta^0)}{\sum_{k=1}^{3}\left[P(X_i|Z_i=k,\theta^0) P(Z_i=k|\theta^0)\right]}\\
+&=\frac{\left(\frac{(\lambda_{j}^0)^{X_i} e^{-\lambda_{j}^0}}{x_i!}\right)\pi_j^0}{\sum_{k=1}^{3}\left(\frac{(\lambda_{k}^0)^{X_i} e^{-\lambda_{k}^0}}{x_i!}\right)\pi_k^0}\\
+&= \frac{(\lambda_j^0)^{X_i}e^{-\lambda^0_j}\pi^0_j}{\sum_{k=1}^{3}\left((\lambda_k^0)^{X_i}e^{\lambda_k^0}\right)\pi_{k}^0}
+\end{align*}
+
+Where $j\in\{1,2,3 \}$.
+
+\noindent (c). Derive M-Step of the EM algorithm
+
+Since
+
+\begin{align*}
+\frac{dQ(\theta,\theta^0)}{d\pi_1}&=\sum_{i=1}^{n}\left(\frac{P(Z_i=1|X_i,\theta^0)}{\pi_1} - \frac{P(Z_i=3|X_i,\theta^0)}{1-\pi_2-\pi_1}\right) = 0 \\
+\implies \pi_3\sum_{i=1}^{n}P(Z_i=1|X_i,\theta^0)&=\pi_1\sum_{i=1}^{n}P(Z_i=3|X_i,\theta^0) & (1)
+\end{align*}
+
+\begin{align*}
+\frac{dQ(\theta,\theta^0)}{d\pi_2}&=\sum_{i=1}^{n}\left(\frac{P(Z_i=2|X_i,\theta^0)}{\pi_2} - \frac{P(Z_i=3|X_i,\theta^0)}{1-\pi_2-\pi_1}\right) = 0 \\
+\implies \pi_3\sum_{i=1}^{n}P(Z_i=2|X_i,\theta^0)&=\pi_2\sum_{i=1}^{n}P(Z_i=3|X_i,\theta^0) & (2)
+\end{align*}
+
+Sub (1) and (2), we get:
+
+\begin{align*}
+\hat{\pi}_3 \sum_{i=1}^{n}\sum_{k=1}^{2}P(Z_i=k|X_i,\theta^0)&=(1-\pi_3)\sum_{i=1}^{n}P(Z_i=3|X_i,\theta^0) \\
+\implies \pi_3\sum_{i=1}^{n}\sum_{k=1}^{3}P(Z_i=k|X_i,\theta^0)&=\sum_{i=1}^{n}P(Z_i=3|X_i,\theta^0) \\
+\implies \pi_3&=\frac{1}{n}\sum_{i=1}^{n}P(Z_i=3|X_i,\theta^0) &(3)
+\end{align*}
+
+Sub (3) into (1) and (2) we get:
+
+
+\begin{align*}
+\hat{\pi}_1&=\frac{1}{n}\sum_{i=1}^{n}P(Z_i=1|X_i,\theta^0) \\
+\hat{\pi}_2&=\frac{1}{n}\sum_{i=1}^{n}P(Z_i=2|X_i,\theta^0) \\
+\end{align*}
+
+For $\hat{\lambda}_k$, since
+
+\begin{align*}
+\frac{dQ(\theta,\theta^0)}{d\lambda_k}&=\sum_{i=1}^{n} P(Z_i=k|X_i,\theta^0) \left( \frac{X_i}{\lambda_k}-1 \right)=0\\
+\implies \sum_{i=1}^{n}P(Z_i=k|X_i,\theta^0)\frac{X_i}{\lambda_k}&=\sum_{i=1}^{n}P(Z_i=k|X_i,\theta^0)\\
+\implies \hat{\lambda}_k&=\frac{\sum_{i=1}^{n}\left[P(Z_i=k|X_i,\theta^0) X_i\right]}{\sum_{i=1}^{n}\left[P(Z_i=k|X_i,\theta^0) \right]}
+\end{align*}
+
+
+\noindent (d). Implementing EM Algorithm
+
+
+```{r}
+mixture.EM <- function(X, w.init, lambda.init, epsilon=1e-5, max.iter=100) {
+  
+  w.curr = w.init
+  lambda.curr = lambda.init
+  
+  # store incomplete log-likehoods for each iteration
+  log_liks = c()
+  
+  # compute incomplete log-likehoods using initial values of parameters. 
+  log_liks = c(log_liks, compute.log.lik(X, w.curr, lambda.curr)$ill)
+  
+  # set the change in incomplete log-likelihood with 1
+  delta.ll = 1
+  
+  # number of iteration
+  n.iter = 1
+  
+  # If the log-likelihood has changed by less than epsilon, EM will stop.   
+  while((delta.ll > epsilon) & (n.iter <= max.iter)){
+    
+    # run EM step
+    EM.out = EM.iter(X, w.curr, lambda.curr)
+    
+    # replace the current value with the new parameter estimate
+    w.curr = EM.out$w.new
+    lambda.curr = EM.out$lambda.new
+    
+    # incomplete log-likehoods with new parameter estimate 
+    log_liks = c(log_liks, compute.log.lik(X, w.curr, lambda.curr)$ill)
+    
+    # compute the change in incomplete log-likelihood 
+    delta.ll = log_liks[length(log_liks)]  - log_liks[length(log_liks)-1]
+    
+    # increase the number of iteration 
+    n.iter = n.iter + 1
+  }
+  return(list(w.curr=w.curr, lambda.curr=lambda.curr, log_liks=log_liks))
+}
+```
+
+```{r}
+EM.iter <- function(X, w.curr, lambda.curr) {
+  
+  # E-step: compute E_{Z|X,\theta_0}[I(Z_i = k)]
+  
+  # for each sample $X_i$, compute $P(X_i, Z_i=k)$ 
+  prob.x.z = compute.prob.x.z(X, w.curr, lambda.curr)$prob.x.z
+  
+  # compute P(Z_i=k | X_i)
+  P_ik = prob.x.z / rowSums(prob.x.z)
+  
+  # M-step
+  w.new = colSums(P_ik)/sum(P_ik)  # sum(P_ik) is equivalent to sample size 
+  lambda.new = colSums(P_ik*X)/colSums(P_ik)
+  
+  return(list(w.new=w.new, lambda.new=lambda.new))
+}
+
+```
+
+```{r}
+
+# Compute incomplete log-likehoods
+compute.log.lik <- function(X, w.curr, lambda.curr) {
+  
+  # for each sample $X_i$, compute $P(X_i, Z_i=k)$
+  prob.x.z = compute.prob.x.z(X, w.curr, lambda.curr)$prob.x.z
+  
+  # incomplete log-likehoods
+  ill = sum(log(rowSums(prob.x.z)))
+  
+  return(list(ill=ill))
+}
+```
+
+
+
+```{r}
+# for each sample $X_i$, compute $P(X_i, Z_i=k)$
+compute.prob.x.z <- function(X, w.curr, lambda.curr) {
+  
+  # for each sample $X_i$, compute $P(X_i, Z_i=k)$. Store these values in the columns of L:
+  L = matrix(NA, nrow=length(X), ncol= length(w.curr))
+  for(k in seq_len(ncol(L))) {
+    L[, k] = dpois(X,lambda.curr[k])*w.curr[k]
+  }
+  
+  return(list(prob.x.z=L))
+}
+```
+
+Running the EM algorithm with the two different intial value
+
+\begin{center}
+\begin{tabular}{|l|c|c|c|c|c| }
+\hline
+&$\pi_1$& $\pi_2$ & $\lambda_1$ & $\lambda_2$&$\lambda_3$\\
+\hline
+1st Initial Values& 0.3 & 0.3 & 3 & 20 & 30\\
+\hline
+2nd Initial Values&0.1 & 0.2 & 5 & 25 &40 \\
+\hline
+\end{tabular}
+\end{center}
+
+Running EM-alogrithm for 1st initial value
+```{r}
+EM1 <- mixture.EM(X, w.init=c(0.3,0.3,0.4), lambda.init = c(3,20,35) ,epsilon = 1e-5, max.iter = 100)
+print(paste("Estimate pi_i = (", round(EM1$w.curr[1],2), ",",
+            round(EM1$w.curr[2],2), ",",
+            round(EM1$w.curr[3],2), ")", sep=""))
+
+
+
+print(paste("Estimate lambda_i = (", round(EM1$lambda.curr[1],2), ",",
+            round(EM1$lambda.curr[2],2), ",",
+            round(EM1$lambda.curr[3],2), ")", sep=""))
+
+print(paste("Log likelihood value = ",round(EM1$log_liks[length(EM1$log_liks)],2)))
+plot(EM1$log_liks, ylab = "Incomplete Log-likelihood", xlab = "Iteration")
+```
+
+Running EM-alogrithm for 2st initial value
+```{r}
+EM2 <- mixture.EM(X, w.init=c(0.1,0.2,0.8), lambda.init = c(5,25,40) ,epsilon = 1e-5, max.iter = 100)
+print(paste("Estimate pi_i = (", round(EM1$w.curr[1],2), ",",
+            round(EM1$w.curr[2],2), ",",
+            round(EM1$w.curr[3],2), ")", sep=""))
+
+
+
+print(paste("Estimate lambda_i = (", round(EM1$lambda.curr[1],2), ",",
+            round(EM2$lambda.curr[2],2), ",",
+            round(EM2$lambda.curr[3],2), ")", sep=""))
+
+print(paste("Log likelihood value = ",round(EM1$log_liks[length(EM1$log_liks)],2)))
+plot(EM2$log_liks, ylab = "Incomplete Log-likelihood", xlab = "Iteration")
+```
+
+
+\pagebreak
+\noindent Question 3:
+
+```{r}
+#Pre Question
+
+X0 = scan(file="assignment2_prob3_2021.txt", what=double())
+length(X)
+length(X0)
+par(mfrow=c(1,2))
+hist(X0)
+hist(c(X,X0))
+X.Both = c(X,X0)
+```
+
+
+
+
+\noindent \textbf{a.} Derive the expectation of the complete log-likelihood
+
+\begin{align*}
+P(X_1,\ldots, X_{300},Z_1,\ldots, Z_3|\theta)+P(X_{301},\ldots,X_{400})  &= \prod_{i = 1}^{300}P(X_i|Z_i,\theta)P(Z_i|\theta)+\prod_{i = 301}^{400}P(X_i)
+\end{align*}
+
+
+\begin{align*}
+\log(P(X_1,\ldots, X_{300},Z_1,\ldots, Z_3|\theta)+P(X_{301},\ldots,X_{400}) )=\\ \sum_{i=1}^{300}\sum_{k=1}^{3}\left[I(Z_i=k)(\log(P(X_i|Z_i=k,\theta))+\log(P(Z_i=k|\theta))) \right]+\sum_{i=301}^{400}P(X_i)
+\end{align*}
+
+
+
+\begin{align*}
+Q(\theta,\theta^0)&=E_{Z|X,\theta^0}[\log(P(X_1,\ldots, X_{300},Z_1,\ldots, Z_3|\theta)+P(X_{301},\ldots,X_{400}) )]\\
+&=\sum_{i=1}^{300}\sum^{3}_{k=1}P(Z_i=k|X_i,\theta^0)\left[\log(P(X_i|Z_i=k,\theta))+\log(P(Z_i=k|\theta))\right]+\sum_{i=301}^{400}P(X_i)\\
+&=\sum_{i=1}^{300}\sum^{3}_{k=1}P(Z_i=k|X_i,\theta^0)\left[X_i\log(\lambda_k)-\lambda_k-\log(X_i!)+\log(\pi_k)\right]+ \sum_{i=301}^{400}\left[ X_i\log(\lambda_2)-\lambda_2-\log(X_i!)\right]
+\end{align*}
+
+where $\pi_3=1-\pi_1-\pi_2$
+
+\noindent (b). Derive E-Step of the EM algorithm
+
+E-Step
+
+Let the initial value $\theta^0=(\pi_{1}^{0},\pi_{2}^{0},\lambda_{1}^{0},\lambda_{2}^{0},\lambda_{3}^{0})$.
+
+\begin{align*}
+P(Z_i=j|X_i,\theta^0)&=\frac{P(Z_i=j,X_i=\theta^0)}{P(X_i|\theta^0)}\\
+&= \frac{P(X_i|Z_i=j,\theta^0)P(Z_i=j|\theta^0)}{\sum_{k=1}^{3}\left[P(X_i|Z_i=k,\theta^0) P(Z_i=k|\theta^0)\right]}\\
+&=\frac{\left(\frac{(\lambda_{j}^0)^{X_i} e^{-\lambda_{j}^0}}{x_i!}\right)\pi_j^0}{\sum_{k=1}^{3}\left(\frac{(\lambda_{k}^0)^{X_i} e^{-\lambda_{k}^0}}{x_i!}\right)\pi_k^0}\\
+&= \frac{(\lambda_j^0)^{X_i}e^{-\lambda^0_j}\pi^0_j}{\sum_{k=1}^{3}\left((\lambda_k^0)^{X_i}e^{\lambda_k^0}\right)\pi_{k}^0}
+\end{align*}
+
+Where $j\in\{1,2,3 \}$.
+
+M-Step
+
+Since
+
+\begin{align*}
+\frac{dQ(\theta,\theta^0)}{d\pi_1}&=\sum_{i=1}^{300}\left(\frac{P(Z_i=1|X_i,\theta^0)}{\pi_1} - \frac{P(Z_i=3|X_i,\theta^0)}{1-\pi_2-\pi_1}\right) = 0 \\
+\implies \pi_3\sum_{i=1}^{300}P(Z_i=1|X_i,\theta^0)&=\pi_1\sum_{i=1}^{300}P(Z_i=3|X_i,\theta^0) & (1)
+\end{align*}
+
+\begin{align*}
+\frac{dQ(\theta,\theta^0)}{d\pi_2}&=\sum_{i=1}^{300}\left(\frac{P(Z_i=2|X_i,\theta^0)}{\pi_2} - \frac{P(Z_i=3|X_i,\theta^0)}{1-\pi_2-\pi_1}\right) = 0 \\
+\implies \pi_3\sum_{i=1}^{300}P(Z_i=2|X_i,\theta^0)&=\pi_2\sum_{i=1}^{n}P(Z_i=3|X_i,\theta^0) & (2)
+\end{align*}
+
+Sub (1) and (2), we get:
+
+\begin{align*}
+\hat{\pi}_3 \sum_{i=1}^{300}\sum_{k=1}^{2}P(Z_i=k|X_i,\theta^0)&=(1-\pi_3)\sum_{i=1}^{300}P(Z_i=3|X_i,\theta^0) \\
+\implies \pi_3\sum_{i=1}^{300}\sum_{k=1}^{3}P(Z_i=k|X_i,\theta^0)&=\sum_{i=1}^{300}P(Z_i=3|X_i,\theta^0) \\
+\implies \pi_3&=\frac{1}{300}\sum_{i=1}^{300}P(Z_i=3|X_i,\theta^0) &(3)
+\end{align*}
+
+Sub (3) into (1) and (2) we get:
+
+
+\begin{align*}
+\hat{\pi}_1&=\frac{1}{300}\sum_{i=1}^{300}P(Z_i=1|X_i,\theta^0) \\
+\hat{\pi}_2&=\frac{1}{300}\sum_{i=1}^{300}P(Z_i=2|X_i,\theta^0) \\
+\end{align*}
+
+For $\hat{\lambda}_k$, where $k \in \{1,3\}$since
+
+\begin{align*}
+\frac{dQ(\theta,\theta^0)}{d\lambda_k}&=\sum_{i=1}^{300} P(Z_i=k|X_i,\theta^0) \left( \frac{X_i}{\lambda_k}-1 \right)=0\\
+\implies \sum_{i=1}^{300}P(Z_i=k|X_i,\theta^0)\frac{X_i}{\lambda_k}&=\sum_{i=1}^{300}P(Z_i=k|X_i,\theta^0)\\
+\implies \hat{\lambda}_k&=\frac{\sum_{i=1}^{300}\left[P(Z_i=k|X_i,\theta^0) X_i\right]}{\sum_{i=1}^{300}\left[P(Z_i=k|X_i,\theta^0) \right]}
+\end{align*}
+
+For $\hat{\lambda}_2$
+
+\begin{align*}
+\frac{dQ(\theta,\theta^0)}{d\lambda_2}=\sum_{i=1}^{300} P(Z_i=k|X_i,\theta^0) \left( \frac{X_i}{\lambda_2}-1 \right)+\sum_{i=301}^{400}\left[\frac{X_i}{\lambda_2}-1\right]=0\\
+\sum_{i=1}^{300}\left[P(Z_i=k|X_i,\theta^0)\frac{X_i}{\lambda_2}    \right]+\sum_{i=301}^{400}\frac{X_i}{\lambda_2}=\sum_{i=1}^{300}P(Z_i=k|X_i,\theta^0)+100\\
+\implies \hat{\lambda}_2=\frac{\sum_{i=1}^{300}P(Z_i=k|X_i,\theta^0)X_i+\sum_{i=301}^{400}X_i}{\sum_{i=1}^{300}P(Z_i=k|X_i,\theta^0)+100}
+\end{align*}
+
+
+\noindent (c). Implementing EM Algorithm
+
+```{r}
+mixture.EM <- function(X, w.init, lambda.init, epsilon=1e-5, max.iter=100) {
+  
+  w.curr = w.init
+  lambda.curr = lambda.init
+  
+  # store incomplete log-likehoods for each iteration
+  log_liks = c()
+  
+  # compute incomplete log-likehoods using initial values of parameters. 
+  log_liks = c(log_liks, compute.log.lik(X, w.curr, lambda.curr)$ill)
+  
+  # set the change in incomplete log-likelihood with 1
+  delta.ll = 1
+  
+  # number of iteration
+  n.iter = 1
+  
+  # If the log-likelihood has changed by less than epsilon, EM will stop.   
+  while((delta.ll > epsilon) & (n.iter <= max.iter)){
+    
+    # run EM step
+    EM.out = EM.iter(X, w.curr, lambda.curr)
+    
+    # replace the current value with the new parameter estimate
+    w.curr = EM.out$w.new
+    lambda.curr = EM.out$lambda.new
+    
+    # incomplete log-likehoods with new parameter estimate 
+    log_liks = c(log_liks, compute.log.lik(X, w.curr, lambda.curr)$ill)
+    
+    # compute the change in incomplete log-likelihood 
+    delta.ll = log_liks[length(log_liks)]  - log_liks[length(log_liks)-1]
+    
+    # increase the number of iteration 
+    n.iter = n.iter + 1
+  }
+  return(list(w.curr=w.curr, lambda.curr=lambda.curr, log_liks=log_liks))
+}
+
+EM.iter <- function(X, w.curr, lambda.curr) {
+  
+  # E-step: compute E_{Z|X,\theta_0}[I(Z_i = k)]
+  
+  # for each sample $X_i$, compute $P(X_i, Z_i=k)$ 
+  prob.x.z = compute.prob.x.z(X, w.curr, lambda.curr)$prob.x.z
+  lambda.new = c(0,0,0)
+  # compute P(Z_i=k | X_i)
+  P_ik = prob.x.z / rowSums(prob.x.z)
+  
+  # M-step
+  w.new = colSums(P_ik)/sum(P_ik)  # sum(P_ik) is equivalent to sample size 
+  lambda.new[1] = sum(P_ik[1:300,1]*X[1:300])/sum(P_ik[1:300,1])
+  lambda.new[3] = sum(P_ik[1:300,3]*X[1:300])/sum(P_ik[1:300,3])
+  
+  lambda.new[2]= (sum(P_ik[1:300,2]*X[1:300])+sum(X[301:400]))/(sum(P_ik[1:300,2])+100)
+  
+  return(list(w.new=w.new, lambda.new=lambda.new))
+}
+
+test=compute.log.lik(X.Both,w.curr = c(0.1,0.3,0.6),lambda.curr=c(5,10,10))
+
+# Compute incomplete log-likehoods
+compute.log.lik <- function(X, w.curr, lambda.curr) {
+  
+  # for each sample $X_i$, compute $P(X_i, Z_i=k) and P(X_i)$ for i from 1 to 300
+  prob.x.z = compute.prob.x.z(X, w.curr, lambda.curr)$prob.x.z
+  
+  #Compute X_i for i from 301 to 400
+  px = dpois(X[301:400], lambda.curr[2])
+  # incomplete log-likehoods
+  ill = sum(log(rowSums(prob.x.z)))+ sum(log(px))
+  
+  return(list(ill=ill))
+}
+
+
+
+
+# for each sample $X_i$, compute $P(X_i, Z_i=k)$
+compute.prob.x.z <- function(X, w.curr, lambda.curr) {
+  
+  # for each sample $X_i$, compute $P(X_i, Z_i=k)$. Store these values in the columns of L:
+  L = matrix(NA, nrow=300, ncol= length(w.curr))
+  for(k in seq_len(ncol(L))) {
+    L[, k] = dpois(X[1:300],lambda.curr[k])*w.curr[k]
+  }
+  return(list(prob.x.z=L))
+}
+```
+
+
+Running the EM algorithm with the two different initial value
+
+\begin{center}
+\begin{tabular}{|l|c|c|c|c|c| }
+\hline
+&$\pi_1$& $\pi_2$ & $\lambda_1$ & $\lambda_2$&$\lambda_3$\\
+\hline
+1st Initial Values& 0.3 & 0.3 & 3 & 20 & 30\\
+\hline
+2nd Initial Values&0.1 & 0.2 & 5 & 25 &40 \\
+\hline
+\end{tabular}
+\end{center}
+
+Running EM algorithm with 1st set of initial values
+```{r}
+EM1 <- mixture.EM(X.Both, w.init=c(0.3,0.3,0.4), lambda.init = c(3,20,35) ,epsilon = 1e-5, max.iter = 100)
+print(paste("Estimate pi_i = (", round(EM1$w.curr[1],2), ",",
+            round(EM1$w.curr[2],2), ",",
+            round(EM1$w.curr[3],2), ")", sep=""))
+
+
+
+print(paste("Estimate lambda_i = (", round(EM1$lambda.curr[1],2), ",",
+            round(EM1$lambda.curr[2],2), ",",
+            round(EM1$lambda.curr[3],2), ")", sep=""))
+
+print(paste("Log likelihood value = ",round(EM1$log_liks[length(EM1$log_liks)],2)))
+plot(EM1$log_liks, ylab = "Incomplete Log-likelihood", xlab = "Iteration")
+
+```
+
+Running EM algorithm with 2nd set of initial values
+```{r}
+EM2 <- mixture.EM(X.Both, w.init=c(0.1,0.2,0.8), lambda.init = c(5,25,40) ,epsilon = 1e-5, max.iter = 100)
+print(paste("Estimate pi_i = (", round(EM1$w.curr[1],2), ",",
+            round(EM1$w.curr[2],2), ",",
+            round(EM1$w.curr[3],2), ")", sep=""))
+
+
+
+print(paste("Estimate lambda_i = (", round(EM1$lambda.curr[1],2), ",",
+            round(EM2$lambda.curr[2],2), ",",
+            round(EM2$lambda.curr[3],2), ")", sep=""))
+
+print(paste("Log likelihood value = ",round(EM1$log_liks[length(EM1$log_liks)],2)))
+plot(EM2$log_liks, ylab = "Incomplete Log-likelihood", xlab = "Iteration")
+
+```
+
